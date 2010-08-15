@@ -76,11 +76,11 @@ sub equals {
 
 =head1 AUTHOR
 
-Mark Chappell - <perl@nslm.org>
+Mark Chappell - <tremble@tremble.org.uk>
 
 =head1 COPYRIGHT
 
-Copyright 2009 Mark Chappell - <perl@nslm.org>
+Copyright 2009 Mark Chappell - <tremble@tremble.org.uk>
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
