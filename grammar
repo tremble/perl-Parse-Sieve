@@ -1,0 +1,119 @@
+# To compile this grammar...
+# perl -MParse::RecDescent - grammar Parse::Sieve::Grammar
+# mv Grammar.pm lib/Parse/Sieve/
+{
+# ========================================================
+# Copyright 2010 Mark Chappell - <tremble@tremble.org.uk>
+#
+# This program is free software; you can redistribute
+# it and/or modify it under the same terms as Perl itself.
+# 
+# The full text of the license can be found in the
+# LICENSE file included with this module.
+#
+# ========================================================
+$skip = qr{([\s\r\n]|/[*].*?[*]/|[#].*?[\r\n]+)*}x ; 
+}
+# === TOKENS
+  # identifier = (ALPHA / "_") *(ALPHA DIGIT "_")
+identifier : /[a-z_][a-z0-9_]*/i
+  { $return = $item[1] ; }
+  # tag = ":" identifier
+tag : ":" identifier
+  { $return = ":" . $item[2] ; }
+  # QUANTIFIER = "K" / "M" / "G"
+QUANTIFIER : "K" | "M" | "G"
+  # number = 1*DIGIT [QUANTIFIER]
+number : /\d+/ QUANTIFIER(?)
+  { $return = $item[1] ; $return .= $item[2][0] if (defined $item[2][0]) ; }
+  # quoted-string = DQUOTE *CHAR DQUOTE
+quoted_string : <skip:qr{\s*}x> /\"[^\"]*\"/
+  { $return=$item{'__PATTERN1__'} ;  $return =~ s/^"// ; $return =~ s/"$// ; }
+  # multi-line		  = "text:" *(SP / HTAB) (hash-comment / CRLF)
+  #   *(multi-line-literal / multi-line-dotstuff)
+  #   "." CRLF
+multi_line : "text:" <skip:q{}> /([\t\ ]*\n|[\t\ ]*#.*?\n)/
+	<skip:q{}> (multi_line_literal | multi_line_dotstuff)(s?) 
+	<skip:q{}> /\.\n/
+	{ $return = join('', @{$item{'_alternation_1_of_production_1_of_rule_multi_line(s?)'}}); 
+      $return =~ s/^\.\././;
+	}
+  # multi-line-literal  = [CHAR-NOT-DOT *CHAR-NOT-CRLF] CRLF
+multi_line_literal : <skip:q{}>  /([^\.\n].*)?\n/
+	{ $return = $item{'__PATTERN1__'} ; 
+}
+  # multi-line-dotstuff = "." 1*CHAR-NOT-CRLF CRLF
+multi_line_dotstuff : <skip:q{}>  /\.[^\n]+\n/ 
+	{ $return = $item{'__PATTERN1__'} ; 
+}
+
+# === Grammar
+
+  # start = commands
+start : commands
+   { my $commands = $item{'commands'};
+   	if (ref($commands) eq 'ARRAY') {
+   		$return = new Parse::Sieve::Script( @{$commands} ) ;
+	}
+	}
+  # commands = *command
+commands : command(s?)
+  { $return = $item{'command(s?)'} ; }
+  # command = identifier arguments ( ";" / block )
+command : identifier arguments ( ";" | block )
+  { my %ret;
+	$ret{'identifier'} = $item{'identifier'}; 
+	$ret{'arguments'} = $item{'arguments'};
+	my $block = $item{'_alternation_1_of_production_1_of_rule_command'} ; 
+	if ($block && $block ne ';') {
+		$ret{'block'} = $block if ($block->isa('Parse::Sieve::Block'));
+	}
+	$return = Parse::Sieve::createCommand(%ret) ; }
+  # block = "{" commands "}"
+block : "{" commands "}"
+   { my $cmds = $item{'commands'};
+   	if (ref($cmds) eq 'ARRAY') {
+		my @commands = @$cmds;
+		$return = new Parse::Sieve::Block( @commands ) ; 
+	} 
+   }
+  # arguments = *argument [test / test_list]
+arguments : argument(s?) (test | test_list)(?)
+  { my %ret = ( 'arguments' => $item{'argument(s?)'}) ; 
+	my $a1 = '_alternation_1_of_production_1_of_rule_arguments(?)';
+	my $tests = $item{$a1};
+	if (ref($tests) eq 'ARRAY' && ref($tests->[0]) eq 'ARRAY') {
+		$tests = $tests->[0];
+	}
+	$ret{'tests'} = $tests if (ref($tests) eq 'ARRAY' && scalar @{$tests}); 
+	$return = \%ret ; }
+  # argument = string_list / number / tag
+argument : string_list 
+  { my %ret = ('stringlist' => $item[1]) ; $return = \%ret }
+	| number 
+  { my %ret = ('number' => $item[1]) ; $return = \%ret }
+	| tag
+  { my %ret = ('tag' => $item[1]) ; $return = \%ret }
+  # test = identifier arguments
+test : identifier arguments
+   # Trim out some of the internal stuff, doesn't really matter but it's cleaner 
+  { my %retval = ('identifier' => $item{'identifier'}, 
+				  'arguments' => $item{'arguments'}) ; 
+	$return = Parse::Sieve::createTest(%retval) ; }
+  # test-list = "(" test *("," test) ")"
+test_list : "(" test ("," test)(s?) ")"
+  { my @list = ( $item[2] ) ;
+	push @list, @{$item[3]} if scalar @item == 5 ;
+	$return = \@list ; }
+  # string = quoted-string / multi-line
+string : quoted_string 
+  { $return=$item[1] ; }
+	| multi_line
+  { $return=$item[1] ; }
+  # string-list = "[" string *("," string) "]" / string
+string_list : "[" string ("," string)(s?) "]" 
+  { my @arr = ($item[2]) ; if (defined $item[3]) 
+	{ push @arr, @{$item[3]} ; $return = \@arr }
+	else { $return = \@{($item[1])} }  }
+	| string
+  { my @tmp = ($item[1]) ; $return=\@tmp ; }
