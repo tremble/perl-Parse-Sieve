@@ -5,7 +5,7 @@ package Parse::Sieve::Script;
 # $Date$
 # $Id$
 #
-# Copyright 2010 Mark Chappell - <tremble@tremble.org.uk>
+# Copyright 2009-2010 Mark Chappell - <tremble@tremble.org.uk>
 #
 # This program is free software; you can redistribute
 # it and/or modify it under the same terms as Perl itself.
@@ -40,7 +40,7 @@ sub new {
 
 =head2 toString
 
-Purpose : toString full script: including any require rules and all
+Purpose : toString the full script: including any require rules and all
 commands
 
 Return  : Returns require control and all commands ordered by priority in text format
@@ -62,17 +62,28 @@ sub toString {
 }
 
 
-# XXX WriteMe
+=head2 toString
+
+Purpose : Compare this script to another script and return true if they're the same...
+
+Return  : Returns true if the two scripts are the same.
+
+=cut
+
 sub equals {
     my $self = shift;
     my $object = shift;
-	return 0;
+	return 1 if (\$self == \$object) ;
+	# XXX Horrible hacky way to do it
+	# Also wouldn't work sensibly if we start preserving comments, additionally it 
+	# doesn't permit us to fiddle with things to suggest we don't care about certain
+	# parts being different...
+	return ($self->toString eq $object->toString);
 }
 
 =head1 BUGS
 
 =head1 SUPPORT
-
 
 =head1 AUTHOR
 
@@ -80,7 +91,7 @@ Mark Chappell - <tremble@tremble.org.uk>
 
 =head1 COPYRIGHT
 
-Copyright 2009 Mark Chappell - <tremble@tremble.org.uk>
+Copyright 2009-2010 Mark Chappell - <tremble@tremble.org.uk>
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
