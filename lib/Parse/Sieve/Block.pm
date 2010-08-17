@@ -29,11 +29,13 @@ __PACKAGE__->mk_accessors(qw(name));
 
 my $indentation = "\t";
 
-sub getIndentation {
+sub getIndentation 
+{
 	return $indentation;
 }
+
 sub setIndentation {
-	$indentation = $_;
+	$indentation = shift;
 	return;
 }
 
@@ -51,7 +53,14 @@ sub new
 sub clone
 {
 	my $self = shift;
-	return $self->Parse::Sieve::Block::new($self->commands(), @_);
+	my @commands = ();
+	foreach my $command ($self->commands) {
+		my $clone = $command->clone;
+		push @commands, $clone if ($clone);
+	}       
+	my $clone = $self->Parse::Sieve::Block::new(@commands);
+	$clone->name($self->name);
+	return $clone; 
 }
 
 =head2 toString
@@ -62,7 +71,8 @@ Return  : Returns all commands ordered by priority in text format
 
 =cut
 
-sub toString {
+sub toString 
+{
 	my $self = shift;
 	my $indent = shift;
 	my $in = q{} ;
@@ -72,7 +82,8 @@ sub toString {
 	return $line;
 }
 
-sub _toString {
+sub _toString 
+{
 	my $self = shift;
 	my $indent = shift;
 	my $in = q{} ;
@@ -89,7 +100,8 @@ sub _toString {
 
 
 # XXX WriteMe
-sub equals {
+sub equals 
+{
 	my $self = shift;
 	my $object = shift;
 	return 0;
@@ -453,7 +465,8 @@ Return   : Returns a list of all require strings required by the commands
 
 =cut
 
-sub sieverequire {
+sub sieverequire 
+{
 	my $self = shift;
 	my @commands = $self->commands();
 	my @req = ();
