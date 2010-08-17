@@ -5,7 +5,7 @@ package Parse::Sieve::Block;
 # $Date$
 # $Id$
 #
-# Copyright 2010 Mark Chappell - <tremble@tremble.org.uk>
+# Copyright 2009-2010 Mark Chappell - <tremble@tremble.org.uk>
 #
 # This program is free software; you can redistribute
 # it and/or modify it under the same terms as Perl itself.
@@ -29,10 +29,28 @@ __PACKAGE__->mk_accessors(qw(name));
 
 my $indentation = "\t";
 
+
+=head2 getIndentation
+
+Purpose : Returns the string to be used as an indentation by toString.
+
+Return  : Returns a string.
+
+=cut
+
 sub getIndentation 
 {
 	return $indentation;
 }
+
+=head2 setIndentation
+
+Purpose : Sets the string to be used as an indentation by toString.
+
+Argument : String to be used for indentation
+
+=cut
+
 
 sub setIndentation {
 	$indentation = shift;
@@ -90,7 +108,7 @@ sub _toString
 	foreach (1..$indent) {$in .= $indentation;};
 	my @commands = $self->commands();
 	foreach my $command (@commands) {
-		next unless ($command);
+		next if (! $command);
 		my $line = $command->toString($indent+1) ;
 		$command = $line;
 	}
@@ -109,9 +127,9 @@ sub equals
 
 =head2 findCommand
 
-Return L<Parse::Sieve::Command> find by priority
+Purpose : Return a  L<Parse::Sieve::Command> found by priority
 
-Return undef on error, 0 on not found
+Return : returns undef on error, 0 on not found
 
 =cut
 
@@ -132,9 +150,11 @@ sub findCommand
 
 =head2 swapCommands
 
-Swap priorities, 
+Swap the priorities of two L<Parse::Sieve::Command>s 
 
-Return 1 on success, 0 on error
+Argument : L<Parse::Sieve::Command> object
+
+Return : Returns 1 on success, 0 on error
 
 =cut
 
@@ -148,11 +168,21 @@ sub swapCommands
 
 	return 0 if $a == $b;
 
-	my $commanda = $self->find_command($a);
-	my $commandb = $self->find_command($b);
+	my $commanda = $a;
+	if (ref($a)) {
+		return 0 if (! $a->isa('Parse::Sieve::Command') );
+	} else {
+		$commanda = $self->findCommand($a);
+	}
+	my $commandb = $b;
+	if (ref($b)) {
+		return 0 if (! $b->isa('Parse::Sieve::Command') );
+	} else {
+		$commandb = $self->findCommand($b);
+	}
 	
-	return 0 unless $commanda->isa('Parse::Sieve::Command');
-	return 0 unless $commandb->isa('Parse::Sieve::Command');
+	return 0 if (! $commanda->isa('Parse::Sieve::Command') );
+	return 0 if (! $commandb->isa('Parse::Sieve::Command') );
 
 	my $priority = $commandb->priority();
 	$commandb->priority($commanda->priority());
@@ -167,7 +197,7 @@ Reorder rules with a list of number, start with 1, and with blank separator. Use
 
 Thank you jeanne for your help in brain storming.
 
-Return 1 on success, 0 on error
+Return : Returns 1 on success, 0 on error
 
 =cut
 
@@ -186,7 +216,7 @@ sub reorderCommands
 	my @new_ordered_commands;
 	foreach my $swap ( @swap ) {
 	  if ($swap =~ /\d+/mx) {
-	   my $command = $self->find_command($swap);
+	   my $command = $self->findCommand($swap);
 	   push @new_ordered_commands, $command;
 	  }
 	}
@@ -208,7 +238,7 @@ Delete a command, dealing with elsif and else statements
 	delete next command if next command is 'else'
 	change next command to 'if' next is 'elsif'
 
-Return : the Parse::Sieve::Command deleted
+Return : the L<Parse::Sieve::Command> deleted
 
 =cut
 
@@ -267,7 +297,7 @@ sub deleteTest
 	
 	foreach my $command (@commands) {
 		my $d = $command->deleteTest($id);
-		next unless ($d);
+		next if (! $d);
 		$deleted = $d;
 		my @tests = $command->tests;
 		next if (scalar @tests) ;
@@ -283,7 +313,7 @@ Purpose  : append a command to the end of block
 
 Return   : priority on success, 0 on error
 
-Argument : Parse::Sieve::Command object
+Argument : L<Parse::Sieve::Command> object
 
 =cut
 
@@ -292,8 +322,8 @@ sub appendCommand
 	my $self = shift;
 	my $command = shift;
 
-	return 0 unless $command;
-	return 0 unless ($command->isa('Parse::Sieve::Command'));
+	return 0 if (! $command );
+	return 0 if (! ($command->isa('Parse::Sieve::Command')) );
 
 	my @commands = $self->commands();
 	my $priority = 0;
@@ -316,7 +346,7 @@ Purpose  : add a command into the block immediately before another
 
 Return   : priority on success, 0 on error
 
-Argument : Parse::Sieve::Command object
+Argument : L<Parse::Sieve::Command> object
 
 =cut
 
@@ -327,26 +357,26 @@ sub insertCommandBefore
 	my $oldcommand = shift;
 	my $oldpriority = undef;
 
-	return 0 unless ($newcommand);
-	return 0 unless ($newcommand->isa('Parse::Sieve::Command'));
-	return 0 unless ($oldcommand);
+	return 0 if (! ($newcommand) );
+	return 0 if (! ($newcommand->isa('Parse::Sieve::Command')) );
+	return 0 if (! ($oldcommand) );
 	if ($oldcommand =~ /^\d*$/mx) {
 		$oldpriority = $oldcommand;
 	} else {
-		return unless (ref($oldcommand));
-		return unless ($oldcommand->can('priority'));
+		return if (! (ref($oldcommand)) );
+		return if (! ($oldcommand->can('priority')) );
 		$oldpriority = $oldcommand->priority;
 	}
 
 	my $previous = $oldpriority - 1;
 	my $previouspriority = undef;
 	foreach my $command ($self->commands()){
-		next unless (ref($command));
-		next unless ($command->can('priority'));
+		next if (! (ref($command)) );
+		next if (! ($command->can('priority')) );
 		$previouspriority = $previous if ($command->priority == $oldpriority);
 		$previous = $command->priority;
 	}
-	return unless (defined $previouspriority);
+	return if (! (defined $previouspriority) );
 	my $newpriority = (($previouspriority + $oldpriority) / 2);
 	$newcommand->priority($newpriority);
 	my @commands =  $self->commands();
@@ -362,7 +392,7 @@ Purpose  : add a command into the block immediately after another
 
 Return   : priority on success, 0 on error
 
-Argument : Parse::Sieve::Command object
+Argument : L<Parse::Sieve::Command> object
 
 =cut
 
@@ -373,22 +403,22 @@ sub insertCommandAfter
 	my $oldcommand = shift;
 	my $oldpriority = undef;
 
-	return 0 unless ($newcommand);
-	return 0 unless ($newcommand->isa('Parse::Sieve::Command'));
-	return 0 unless ($oldcommand);
+	return 0 if (! ($newcommand) );
+	return 0 if (! ($newcommand->isa('Parse::Sieve::Command')) );
+	return 0 if (! ($oldcommand) );
 	if ($oldcommand =~ /^\d*$/mx) {
 		$oldpriority = $oldcommand;
 	} else {
-		return unless (ref($oldcommand));
-		return unless ($oldcommand->can('priority'));
+		return if (! (ref($oldcommand)) );
+		return if (! ($oldcommand->can('priority')) );
 		$oldpriority = $oldcommand->priority;
 	}
 
 	my $current = 0;
 	my $nextpriority = undef;
 	foreach my $command ($self->commands()){
-		next unless (ref($command));
-		next unless ($command->can('priority'));
+		next if (! (ref($command)) );
+		next if (! ($command->can('priority')) );
 		if ($current) {
 			$nextpriority = $command->priority;
 			$current = 0;
@@ -396,7 +426,7 @@ sub insertCommandAfter
 		$current = 1 if ($command->priority == $oldpriority);
 	}
 	$nextpriority = $oldpriority + 1 if ($current);
-	return unless (defined $nextpriority);
+	return if (! defined $nextpriority);
 	my $newpriority = (($nextpriority + $oldpriority) / 2);
 	$newcommand->priority($newpriority);
 	my @commands = $self->commands();
@@ -413,7 +443,7 @@ command to tell us where.
 
 Return   : priority on success, 0 on error
 
-Argument : Parse::Sieve::Command object
+Argument : L<Parse::Sieve::Command> object
 
 =cut
 
@@ -422,8 +452,8 @@ sub insertCommand
 	my $self = shift;
 	my $command = shift;
 
-	return 0 unless ($command);
-	return 0 unless $command->isa('Parse::Sieve::Command');
+	return 0 if (! ($command) );
+	return 0 if (! $command->isa('Parse::Sieve::Command') );
 
 	my @commands =  $self->commands() || ();
 	push @commands, $command;
@@ -435,16 +465,16 @@ sub insertCommand
 
 Purpose  : Return a sorted list of command objects
 
-Return   : Returns a list of Parse::Sieve::Commands ordered by priority.
+Return   : Returns a list of L<Parse::Sieve::Command>s ordered by priority.
 
 =cut
 
 sub commands
 {
 	my $self = shift;
-	unless (@_) {
+	if (! (@_) ){
 		my $ret = $self->{'commands'};
-		return () unless (ref($ret) eq 'ARRAY');
+		return () if (! (ref($ret) eq 'ARRAY') );
 		return @{$ret};
 	}
 	my @commands = sort {  $a->{'priority'} <=> $b->{'priority'}
@@ -471,7 +501,7 @@ sub sieverequire
 	my @commands = $self->commands();
 	my @req = ();
 	foreach my $command (@commands) {
-		next unless $command->can('sieverequire');
+		next if (! $command->can('sieverequire') );
 		push @req, $command->sieverequire();
 	}
 	my %rq = ();
@@ -492,7 +522,7 @@ Mark Chappell <tremble@tremble.org.uk>
 
 =head1 COPYRIGHT
 
-Copyright 2009 Mark Chappell - <tremble@tremble.org.uk>
+Copyright 2009-2010 Mark Chappell - <tremble@tremble.org.uk>
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
